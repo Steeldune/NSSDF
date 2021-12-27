@@ -86,27 +86,28 @@ def middle_upscale(a, b, t1, t2):
 
 
 def func(x, b=0.3):
-    return np.exp(b * x)
+    return x
 
 
 def f_func(x, t):
-    return 0.3 ** 2 / 2.0 * x
+    return 0
 
 
-def g_func(x, t):
-    return 0.3 * x
+def g_func(x, t, h=1.0, K=0.05):
+    z = x % (h / 2.0)
+    return np.sqrt(2* (z * (h - 2 * z) * K))
 
 
 if __name__ == '__main__':
     rng = default_rng()
-    nr_samples = 1000
+    nr_samples = 100
     time_end = 10.0
-    time_scale = 0.04
-    nr_scales = 8
-    nr_solvers = 6
+    time_scale = 0.0001
+    nr_scales = 10
+    nr_solvers = 10
     mfd = int(2 ** (nr_scales - 1))
 
-    scale_origin = 2
+    scale_origin = 0
 
     wiener_list = [None for x in range(nr_scales)]
     wiener_list[scale_origin] = [Wiener.generate_new(time_scale, time_end) for i in range(nr_samples)]
@@ -127,28 +128,28 @@ if __name__ == '__main__':
 
     ax2 = fig.add_subplot(2, 1, 2)
 
-    for j in range(nr_samples):
-        solved_list[0][j] = wiener_list[0][j].apply_function(func)
-        if j == 0:
-            wiener_list[0][j].plot_solved(ax, label='Exact')
-        ini_point = solved_list[0][j, 0]
+    for j in tqdm(range(nr_samples)):
+        # solved_list[0][j] = wiener_list[0][j].apply_function(func)
+        # if j == 0:
+        #     wiener_list[0][j].plot_solved(ax, label='Exact')
+        ini_point = 0.75
         error = np.zeros((nr_solvers, len(solved_list[0][0]) // mfd))
 
         for i in range(nr_scales - nr_solvers, nr_scales):
             solved_list[i][j] = wiener_list[i][j].apply_euler(f_func, g_func, ini_pos=ini_point)
             if j == 0:
                 wiener_list[i][j].plot_solved(ax, label='Solved {}'.format(i))
-
-            for k in range(0, len(solved_list[0][0]) - mfd, mfd):
-                error[i - (nr_scales - nr_solvers), k // mfd] = np.abs(
-                    solved_list[0][j, k] - solved_list[i][j, k // 2 ** i])
+            if i > 0:
+                for k in range(0, len(solved_list[0][0]) - mfd, mfd):
+                    error[i - (nr_scales - nr_solvers), k // mfd] = np.abs(
+                        solved_list[0][j, k] - solved_list[i][j, k // 2 ** i])
 
         mean_error[j] = [np.mean(error[s, 5:]) for s in range(nr_solvers)]
     delta_ts = [wiener_list[x][0].min_scale for x in range(nr_scales - nr_solvers, nr_scales)]
-    print(np.mean(mean_error, axis=0))
+
     ax.legend()
 
-    ax2.loglog(delta_ts, np.mean(mean_error, axis=0), label='Sample Error')
+    ax2.loglog(delta_ts[1:], np.mean(mean_error, axis=0)[1:], label='Sample Error')
 
     x_test = np.linspace(0.01, 1, 50)
     y_test = np.sqrt(x_test)
