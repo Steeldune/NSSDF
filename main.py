@@ -101,7 +101,7 @@ if __name__ == '__main__':
     rng = default_rng()
     nr_samples = 1000
     time_end = 10.0
-    time_scale = 0.01
+    time_scale = 0.04
     nr_scales = 8
     nr_solvers = 6
     mfd = int(2 ** (nr_scales - 1))
@@ -148,7 +148,13 @@ if __name__ == '__main__':
     print(np.mean(mean_error, axis=0))
     ax.legend()
 
-    ax2.loglog(delta_ts, np.mean(mean_error, axis=0))
+    ax2.loglog(delta_ts, np.mean(mean_error, axis=0), label='Sample Error')
+
+    x_test = np.linspace(0.01, 1, 50)
+    y_test = np.sqrt(x_test)
+    ax2.loglog(x_test, y_test, label='Error fit')
+
     ax2.grid()
+    ax2.legend()
 
     plt.show()
