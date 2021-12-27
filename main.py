@@ -104,7 +104,7 @@ if __name__ == '__main__':
     time_scale = 0.01
     nr_scales = 8
     nr_solvers = 6
-    mfd = int(2**(nr_scales-1))
+    mfd = int(2 ** (nr_scales - 1))
 
     scale_origin = 2
 
@@ -118,24 +118,10 @@ if __name__ == '__main__':
     for i in range(scale_origin + 1, nr_scales):
         wiener_list[i] = [Wiener.generate_downscale(wiener.export()) for wiener in wiener_list[i - 1]]
 
-    # wiener_mids = [Wiener.generate_new(time_scale, time_end) for i in range(nr_samples)]
-    # wiener_ups1 = [Wiener.generate_upscale(wiener_mid.export()) for wiener_mid in wiener_mids]
-    # wiener_ups2 = [Wiener.generate_upscale(wiener_up.export()) for wiener_up in wiener_ups1]
-    # wiener_downs1 = [Wiener.generate_downscale(wiener_mid.export()) for wiener_mid in wiener_mids]
-    # wiener_downs2 = [Wiener.generate_downscale(wiener_down.export()) for wiener_down in wiener_downs1]
-    # wiener_downs3 = [Wiener.generate_downscale(wiener_down.export()) for wiener_down in wiener_downs2]
-    # wiener_downs4 = [Wiener.generate_downscale(wiener_down.export()) for wiener_down in wiener_downs3]
     fig = plt.figure()
     ax = fig.add_subplot(2, 1, 1)
 
     solved_list = [np.zeros((nr_samples, wiener[0].max_samples)) for wiener in wiener_list]
-
-    # solved_exact = np.zeros((nr_samples, wiener_ups2[0].max_samples))
-    # solved_mid = np.zeros((nr_samples, wiener_mids[0].max_samples))
-    # solved_down1 = np.zeros((nr_samples, wiener_downs1[0].max_samples))
-    # solved_down2 = np.zeros((nr_samples, wiener_downs2[0].max_samples))
-    # solved_down3 = np.zeros((nr_samples, wiener_downs3[0].max_samples))
-    # solved_down4 = np.zeros((nr_samples, wiener_downs4[0].max_samples))
 
     mean_error = np.zeros((nr_samples, nr_solvers))
 
@@ -153,44 +139,12 @@ if __name__ == '__main__':
             if j == 0:
                 wiener_list[i][j].plot_solved(ax, label='Solved {}'.format(i))
 
-        # solved_exact[j] = wiener_list[0][j].apply_function(func)
-        # if j == 0:
-        #     wiener_list[0][j].plot_solved(ax, label='Exact')
-        # ini_point = solved_exact[j, 0]
-        #
-        # # for i in range(scale_origin, nr_scales):
-        #
-        #
-        # solved_mid[j] = wiener_mids[j].apply_euler(f_func, g_func, ini_pos=ini_point)
-        # if j == 0:
-        #     wiener_mids[j].plot_solved(ax, label='SDE_mid')
-        #
-        # solved_down1[j] = wiener_downs1[j].apply_euler(f_func, g_func, ini_pos=ini_point)
-        # if j == 0:
-        #     wiener_downs1[j].plot_solved(ax, label='SDE_down1')
-        #
-        # solved_down2[j] = wiener_downs2[j].apply_euler(f_func, g_func, ini_pos=ini_point)
-        # if j == 0:
-        #     wiener_downs2[j].plot_solved(ax, label='SDE_down2')
-        #
-        # solved_down3[j] = wiener_downs3[j].apply_euler(f_func, g_func, ini_pos=ini_point)
-        # if j == 0:
-        #     wiener_downs3[j].plot_solved(ax, label='SDE_down3')
-        #
-        # solved_down4[j] = wiener_downs4[j].apply_euler(f_func, g_func, ini_pos=ini_point)
-        # if j == 0:
-        #     wiener_downs4[j].plot_solved(ax, label='SDE_down4')
-
             for k in range(0, len(solved_list[0][0]) - mfd, mfd):
-                error[i-(nr_scales-nr_solvers), k // mfd] = np.abs(solved_list[0][j, k] - solved_list[i][j, k // 2**i])
-
-            # error[1, i // mfd] = np.abs(solved_exact[j, i] - solved_down1[j, k // (mfd // 8)])
-            # error[2, i // mfd] = np.abs(solved_exact[j, i] - solved_down2[j, k // (mfd // 4)])
-            # error[3, i // mfd] = np.abs(solved_exact[j, i] - solved_down3[j, k // (mfd // 2)])
-            # error[4, i // mfd] = np.abs(solved_exact[j, i] - solved_down4[j, i // mfd])
+                error[i - (nr_scales - nr_solvers), k // mfd] = np.abs(
+                    solved_list[0][j, k] - solved_list[i][j, k // 2 ** i])
 
         mean_error[j] = [np.mean(error[s, 5:]) for s in range(nr_solvers)]
-    delta_ts = [wiener_list[x][0].min_scale for x in range(nr_scales-nr_solvers, nr_scales)]
+    delta_ts = [wiener_list[x][0].min_scale for x in range(nr_scales - nr_solvers, nr_scales)]
     print(np.mean(mean_error, axis=0))
     ax.legend()
 
