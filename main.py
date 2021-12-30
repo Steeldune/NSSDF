@@ -65,6 +65,15 @@ class Wiener():
                     self.sample[i + 1] - self.sample[i])
         return self.solved.copy()
 
+    def apply_milstein(self, f_func, g_func, g_func_der, ini_pos=0.0):
+        self.solved[0] = ini_pos
+        for i in range(self.max_samples - 1):
+            x = self.solved[i]
+            self.solved[i + 1] = x + f_func(x, self.axis_x[i]) * self.min_scale + g_func(x, self.axis_x[i]) * (
+                    self.sample[i + 1] - self.sample[i]) + 0.5 * g_func(x, self.axis_x[i]) * g_func_der(x, self.axis_x[
+                i]) * ((
+                               self.sample[i + 1] - self.sample[i]) ** 2 - self.min_scale)
+
     def apply_function(self, function):
         self.solved = function(self.sample)
         return self.solved.copy()
@@ -93,19 +102,25 @@ def f_func(x, t):
     return 0
 
 
-def g_func(x, t, h=1.0, K=0.05):
+def g_func(x, t, h=10.0, K=0.01):
     z = x % (h / 2.0)
-    return np.sqrt(2* (z * (h - 2 * z) * K))
+    return np.sqrt(2 * (z * (h - 2 * z) * K))
+
+
+def g_func_der(x, t, h=10.0, K=0.001):
+    z = x % (h / 2.0)
+    return (h - 4 * z) * K
 
 
 if __name__ == '__main__':
     rng = default_rng()
-    nr_samples = 100
-    time_end = 10.0
-    time_scale = 0.0001
-    nr_scales = 10
-    nr_solvers = 10
+    nr_samples = 50
+    time_end = 20.0
+    time_scale = 0.001
+    nr_scales = 8
+    nr_solvers = 8
     mfd = int(2 ** (nr_scales - 1))
+    ini_point = 2.5
 
     scale_origin = 0
 
@@ -132,12 +147,11 @@ if __name__ == '__main__':
         # solved_list[0][j] = wiener_list[0][j].apply_function(func)
         # if j == 0:
         #     wiener_list[0][j].plot_solved(ax, label='Exact')
-        ini_point = 0.75
         error = np.zeros((nr_solvers, len(solved_list[0][0]) // mfd))
 
         for i in range(nr_scales - nr_solvers, nr_scales):
-            solved_list[i][j] = wiener_list[i][j].apply_euler(f_func, g_func, ini_pos=ini_point)
-            if j == 0:
+            solved_list[i][j] = wiener_list[i][j].apply_milstein(f_func, g_func, g_func_der, ini_pos=ini_point)
+            if i == 0:
                 wiener_list[i][j].plot_solved(ax, label='Solved {}'.format(i))
             if i > 0:
                 for k in range(0, len(solved_list[0][0]) - mfd, mfd):
@@ -147,15 +161,20 @@ if __name__ == '__main__':
         mean_error[j] = [np.mean(error[s, 5:]) for s in range(nr_solvers)]
     delta_ts = [wiener_list[x][0].min_scale for x in range(nr_scales - nr_solvers, nr_scales)]
 
-    ax.legend()
+    # ax.legend()
 
     ax2.loglog(delta_ts[1:], np.mean(mean_error, axis=0)[1:], label='Sample Error')
 
     x_test = np.linspace(0.01, 1, 50)
     y_test = np.sqrt(x_test)
-    ax2.loglog(x_test, y_test, label='Error fit')
+    ax2.loglog(x_test, y_test, label='Error fit O(dt^1/2)')
 
     ax2.grid()
     ax2.legend()
+
+    plt.figure()
+    end_histo = [solved_list[0][i][-1] for i in range(len(solved_list[0]))]
+    plt.hist(end_histo, 40, range=(0.0, 10.0), density=True)
+    plt.xlim(0.0, 10.0)
 
     plt.show()
