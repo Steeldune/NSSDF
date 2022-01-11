@@ -71,8 +71,8 @@ class Wiener():
             x = self.solved[i]
             self.solved[i + 1] = x + f_func(x, self.axis_x[i]) * self.min_scale + g_func(x, self.axis_x[i]) * (
                     self.sample[i + 1] - self.sample[i]) + 0.5 * g_func(x, self.axis_x[i]) * g_func_der(x, self.axis_x[
-                i]) * ((
-                               self.sample[i + 1] - self.sample[i]) ** 2 - self.min_scale)
+                i]) * (np.power(self.sample[i + 1] - self.sample[i], 2.0) - self.min_scale)
+        return self.solved.copy()
 
     def apply_function(self, function):
         self.solved = function(self.sample)
@@ -102,25 +102,37 @@ def f_func(x, t):
     return 0
 
 
-def g_func(x, t, h=10.0, K=0.01):
+def g_func(x, t, h=1.0, K=0.001):
     z = x % (h / 2.0)
-    return np.sqrt(2 * (z * (h - 2 * z) * K))
+    return np.sqrt(2.0 * (z * (h - 2.0 * z) * K))
 
 
-def g_func_der(x, t, h=10.0, K=0.001):
+def g_func_alt(x, t, h=1.0, k=1.0):
     z = x % (h / 2.0)
-    return (h - 4 * z) * K
+    return z * (h - 2 * z) * k
+
+
+def g_func_der_alt(x, t, h=1.0, K=1.0):
+    z = x % (h / 2.0)
+    return K * (h - 4 * z)
+
+
+def g_func_der(x, t, h=1.0, K=0.001):
+    z = x % (h / 2.0)
+    denom = np.sqrt(K * z * (h - 2.0 * z))
+    return K * (h / np.sqrt(2.0) - 2.0 * np.sqrt(2.0) * z) / denom
 
 
 if __name__ == '__main__':
     rng = default_rng()
-    nr_samples = 50
-    time_end = 20.0
+    nr_samples = 500
+    time_end = 80.0
     time_scale = 0.001
-    nr_scales = 8
-    nr_solvers = 8
+    nr_scales = 3
+    nr_solvers = 3
     mfd = int(2 ** (nr_scales - 1))
-    ini_point = 2.5
+    ini_point = .25
+    nr_histo_frames = 10
 
     scale_origin = 0
 
@@ -130,18 +142,16 @@ if __name__ == '__main__':
     for i in range(scale_origin):
         wiener_list[scale_origin - i - 1] = [Wiener.generate_upscale(wiener.export()) for wiener in
                                              wiener_list[scale_origin - i]]
-
     for i in range(scale_origin + 1, nr_scales):
         wiener_list[i] = [Wiener.generate_downscale(wiener.export()) for wiener in wiener_list[i - 1]]
 
     fig = plt.figure()
     ax = fig.add_subplot(2, 1, 1)
+    ax2 = fig.add_subplot(2, 1, 2)
 
     solved_list = [np.zeros((nr_samples, wiener[0].max_samples)) for wiener in wiener_list]
 
     mean_error = np.zeros((nr_samples, nr_solvers))
-
-    ax2 = fig.add_subplot(2, 1, 2)
 
     for j in tqdm(range(nr_samples)):
         # solved_list[0][j] = wiener_list[0][j].apply_function(func)
@@ -150,7 +160,9 @@ if __name__ == '__main__':
         error = np.zeros((nr_solvers, len(solved_list[0][0]) // mfd))
 
         for i in range(nr_scales - nr_solvers, nr_scales):
+            # solved_list[i][j] = wiener_list[i][j].apply_euler(f_func, g_func, ini_pos=ini_point)
             solved_list[i][j] = wiener_list[i][j].apply_milstein(f_func, g_func, g_func_der, ini_pos=ini_point)
+
             if i == 0:
                 wiener_list[i][j].plot_solved(ax, label='Solved {}'.format(i))
             if i > 0:
@@ -165,16 +177,23 @@ if __name__ == '__main__':
 
     ax2.loglog(delta_ts[1:], np.mean(mean_error, axis=0)[1:], label='Sample Error')
 
-    x_test = np.linspace(0.01, 1, 50)
+    x_test = np.linspace(0.0001, 1, 50)
     y_test = np.sqrt(x_test)
     ax2.loglog(x_test, y_test, label='Error fit O(dt^1/2)')
+    ax2.loglog(x_test, x_test, label='Error for O(dt^1)')
+    ax2.set_xlabel('Timestep')
+    ax2.set_ylabel('Error')
 
     ax2.grid()
     ax2.legend()
+    disc_time_len = len(solved_list[0][0])
 
-    plt.figure()
-    end_histo = [solved_list[0][i][-1] for i in range(len(solved_list[0]))]
-    plt.hist(end_histo, 40, range=(0.0, 10.0), density=True)
-    plt.xlim(0.0, 10.0)
+    time_frames = np.linspace(0, disc_time_len-1, nr_histo_frames, dtype=int)
+
+    for frame in time_frames:
+        plt.figure()
+        end_histo = [solved_list[0][i][frame] for i in range(nr_samples)]
+        plt.hist(end_histo, 50, range=(0.0, 0.50), density=True)
+        plt.xlim(0.0, 0.5)
 
     plt.show()
