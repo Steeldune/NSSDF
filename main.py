@@ -98,41 +98,44 @@ def func(x, b=0.3):
     return x
 
 
-def f_func(x, t):
-    return 0
-
-
-def g_func(x, t, h=1.0, K=0.001):
-    z = x % (h / 2.0)
-    return np.sqrt(2.0 * (z * (h - 2.0 * z) * K))
-
-
-def g_func_alt(x, t, h=1.0, k=1.0):
-    z = x % (h / 2.0)
-    return z * (h - 2 * z) * k
-
-
-def g_func_der_alt(x, t, h=1.0, K=1.0):
+def f_func(x, t, h=1.0, K = 1.0):
     z = x % (h / 2.0)
     return K * (h - 4 * z)
 
 
-def g_func_der(x, t, h=1.0, K=0.001):
+def g_func(x, t, h=1.0, K=1.0):
+    z = x % (h / 2.0)
+    return np.sqrt(2.0 * (z * (h - 2.0 * z) * K))
+
+
+def g_func_der(x, t, h=1.0, K=1.0):
     z = x % (h / 2.0)
     denom = np.sqrt(K * z * (h - 2.0 * z))
     return K * (h / np.sqrt(2.0) - 2.0 * np.sqrt(2.0) * z) / denom
 
 
+def g_func_alt(x, t, h=1.0, k=0.3):
+    z = x % (h / 2.0)
+    return z * (h - 2 * z) * k
+
+
+def g_func_der_alt(x, t, h=1.0, K=0.3):
+    z = x % (h / 2.0)
+    return K * (h - 4 * z)
+
+
 if __name__ == '__main__':
+    depth = 1.0
+
     rng = default_rng()
-    nr_samples = 500
-    time_end = 80.0
-    time_scale = 0.001
-    nr_scales = 3
-    nr_solvers = 3
+    nr_samples = 100
+    time_end = 1.0
+    time_scale = 0.0005
+    nr_scales = 8
+    nr_solvers = 8
     mfd = int(2 ** (nr_scales - 1))
-    ini_point = .25
-    nr_histo_frames = 10
+    ini_point = depth/5
+    nr_histo_frames = 2
 
     scale_origin = 0
 
@@ -145,9 +148,10 @@ if __name__ == '__main__':
     for i in range(scale_origin + 1, nr_scales):
         wiener_list[i] = [Wiener.generate_downscale(wiener.export()) for wiener in wiener_list[i - 1]]
 
-    fig = plt.figure()
-    ax = fig.add_subplot(2, 1, 1)
-    ax2 = fig.add_subplot(2, 1, 2)
+
+    fig, ax = plt.subplots()
+    fig.set_size_inches(8.5, 5.5)
+    fig.set_dpi(300)
 
     solved_list = [np.zeros((nr_samples, wiener[0].max_samples)) for wiener in wiener_list]
 
@@ -173,7 +177,25 @@ if __name__ == '__main__':
         mean_error[j] = [np.mean(error[s, 5:]) for s in range(nr_solvers)]
     delta_ts = [wiener_list[x][0].min_scale for x in range(nr_scales - nr_solvers, nr_scales)]
 
+    ax.set_xlabel('time (t)')
+    ax.set_ylabel('position (z)')
+
     # ax.legend()
+    fig = plt.figure(figsize=(8.5, 6.5), dpi=300)
+    ax3 = fig.add_subplot(2, 1, 1)
+    for i, track in enumerate(solved_list):
+        nr_datapoints = len(track[0])
+        x_axis = wiener_list[i][0].axis_x
+        plot_scale = wiener_list[i][0].min_scale
+        # x_axis = np.linspace(0.0, time_end, nr_datapoints)
+        ax3.plot(x_axis, track[0], label='dt = {}'.format(plot_scale))
+
+    ax3.legend()
+    ax3.set_xlabel('time (t)')
+    ax3.set_ylabel('position (z)')
+    ax3.set_title('A. One process with different sampling from the Wiener Process')
+    ax2 = fig.add_subplot(2, 1, 2)
+    fig.subplots_adjust(hspace=0.5)
 
     ax2.loglog(delta_ts[1:], np.mean(mean_error, axis=0)[1:], label='Sample Error')
 
@@ -183,6 +205,7 @@ if __name__ == '__main__':
     ax2.loglog(x_test, x_test, label='Error for O(dt^1)')
     ax2.set_xlabel('Timestep')
     ax2.set_ylabel('Error')
+    ax2.set_title('B. Strong Convergence plot with example slopes (n={})'.format(nr_samples))
 
     ax2.grid()
     ax2.legend()
@@ -193,7 +216,10 @@ if __name__ == '__main__':
     for frame in time_frames:
         plt.figure()
         end_histo = [solved_list[0][i][frame] for i in range(nr_samples)]
-        plt.hist(end_histo, 50, range=(0.0, 0.50), density=True)
-        plt.xlim(0.0, 0.5)
+        plt.hist(end_histo, 50, range=(0.0, depth/2), density=True)
+        plt.title('Particle distribution at time t={:.2f}, n={}'.format(frame/disc_time_len*time_end, nr_samples))
+        plt.xlabel('position (z)')
+        plt.ylabel('particle frequency (%)')
+        plt.xlim(0.0, depth/2)
 
     plt.show()
