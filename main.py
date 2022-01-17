@@ -134,8 +134,8 @@ if __name__ == '__main__':
     nr_scales = 8
     nr_solvers = 8
     mfd = int(2 ** (nr_scales - 1))
-    ini_point = depth/5
-    nr_histo_frames = 2
+    ini_point = depth/4
+    nr_histo_frames = 3
 
     scale_origin = 0
 
@@ -179,6 +179,9 @@ if __name__ == '__main__':
 
     ax.set_xlabel('time (t)')
     ax.set_ylabel('position (z)')
+    ax.set_title('Position of Particles over time in Milstein scheme')
+    for i in np.arange(0.0, 1.1, 0.5):
+        ax.axhline(i, linestyle='--', color='gray')
 
     # ax.legend()
     fig = plt.figure(figsize=(8.5, 6.5), dpi=300)
@@ -190,12 +193,16 @@ if __name__ == '__main__':
         # x_axis = np.linspace(0.0, time_end, nr_datapoints)
         ax3.plot(x_axis, track[0], label='dt = {}'.format(plot_scale))
 
-    ax3.legend()
+    ax3.legend(loc=3)
     ax3.set_xlabel('time (t)')
     ax3.set_ylabel('position (z)')
     ax3.set_title('A. One process with different sampling from the Wiener Process')
+    for i in np.arange(0.0, 1.1, 0.5):
+        ax3.axhline(i, linestyle='--', color='gray')
+
     ax2 = fig.add_subplot(2, 1, 2)
     fig.subplots_adjust(hspace=0.5)
+    fig.suptitle('Milstein Strong Convergence', fontsize=16)
 
     ax2.loglog(delta_ts[1:], np.mean(mean_error, axis=0)[1:], label='Sample Error')
 
@@ -216,10 +223,11 @@ if __name__ == '__main__':
     for frame in time_frames:
         plt.figure()
         end_histo = [solved_list[0][i][frame] for i in range(nr_samples)]
-        plt.hist(end_histo, 50, range=(0.0, depth/2), density=True)
+        plt.hist(end_histo, 100, range=(0.0, depth), density=True)
         plt.title('Particle distribution at time t={:.2f}, n={}'.format(frame/disc_time_len*time_end, nr_samples))
         plt.xlabel('position (z)')
         plt.ylabel('particle frequency (%)')
-        plt.xlim(0.0, depth/2)
+        plt.xlim(0.0, depth)
+        plt.ylim(0.0, 4.5)
 
     plt.show()
