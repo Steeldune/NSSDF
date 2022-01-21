@@ -1,7 +1,3 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -95,13 +91,13 @@ def middle_upscale(a, b, t1, t2):
 
 
 def func(x, b=0.3):
-    return x
-
+    # return x
+    return 0
 
 def f_func(x, t, h=1.0, K=1.0):
     z = x % (h / 2.0)
-    return K * (h - 4 * z)
-
+    # return K * (h - 4 * z)
+    return 0
 
 def g_func(x, t, h=1.0, K=1.0):
     z = x % (h / 2.0)
@@ -114,28 +110,28 @@ def g_func_der(x, t, h=1.0, K=1.0):
     return K * (h / np.sqrt(2.0) - 2.0 * np.sqrt(2.0) * z) / denom
 
 
-def g_func_alt(x, t, h=1.0, k=0.3):
+def g_func_alt(x, t, h=1.0, k=2.0):
     z = x % (h / 2.0)
     return z * (h - 2 * z) * k
 
 
-def g_func_der_alt(x, t, h=1.0, K=0.3):
+def g_func_der_alt(x, t, h=1.0, K=2.0):
     z = x % (h / 2.0)
     return K * (h - 4 * z)
 
 
 if __name__ == '__main__':
     depth = 1.0
-
     rng = default_rng()
-    nr_samples = 100000
-    time_end = 0.5
-    time_scale = 0.0005
-    nr_scales = 5
-    nr_solvers = 5
+    nr_samples = 100
+    time_end = 10
+    time_scale = 0.001
+    nr_scales = 7
+    nr_solvers = 7
     mfd = int(2 ** (nr_scales - 1))
     ini_point = depth / 4
-    nr_histo_frames = 3
+    nr_histo_frames = 5
+    E_or_M = False
 
     scale_origin = 0
 
@@ -158,13 +154,15 @@ if __name__ == '__main__':
 
     for j in tqdm(range(nr_samples)):
         # solved_list[0][j] = wiener_list[0][j].apply_function(func)
-        # if j == 0:
-        #     wiener_list[0][j].plot_solved(ax, label='Exact')
+        if j == 0:
+            wiener_list[0][j].plot_solved(ax, label='Exact')
         error = np.zeros((nr_solvers, len(solved_list[0][0]) // mfd))
 
         for i in range(nr_scales - nr_solvers, nr_scales):
-            # solved_list[i][j] = wiener_list[i][j].apply_euler(f_func, g_func, ini_pos=ini_point)
-            solved_list[i][j] = wiener_list[i][j].apply_milstein(f_func, g_func, g_func_der, ini_pos=ini_point)
+            if E_or_M:
+                solved_list[i][j] = wiener_list[i][j].apply_euler(f_func, g_func, ini_pos=ini_point)
+            else:
+                solved_list[i][j] = wiener_list[i][j].apply_milstein(f_func, g_func_alt, g_func_der_alt, ini_pos=ini_point)
 
             if i == 0:
                 wiener_list[i][j].plot_solved(ax, label='Solved {}'.format(i))
@@ -178,8 +176,8 @@ if __name__ == '__main__':
 
     ax.set_xlabel('time (t)')
     ax.set_ylabel('position (z)')
-    ax.set_title('Position of Particles over time in Milstein scheme')
-    for i in np.arange(0.0, 1.1, 0.5):
+    ax.set_title('Position of Particles over time in {} scheme'.format(('Milstein', 'Euler')[E_or_M]))
+    for i in np.arange(0.0, depth+0.1, depth*0.5):
         ax.axhline(i, linestyle='--', color='gray')
 
     # ax.legend()
@@ -196,12 +194,12 @@ if __name__ == '__main__':
     ax3.set_xlabel('time (t)')
     ax3.set_ylabel('position (z)')
     ax3.set_title('A. One process with different sampling from the Wiener Process')
-    for i in np.arange(0.0, 1.1, 0.5):
+    for i in np.arange(0.0, depth+0.1, depth*0.5):
         ax3.axhline(i, linestyle='--', color='gray')
 
     ax2 = fig.add_subplot(2, 1, 2)
     fig.subplots_adjust(hspace=0.5)
-    fig.suptitle('Milstein Strong Convergence', fontsize=16)
+    fig.suptitle('{} Strong Convergence'.format(('Milstein', 'Euler')[E_or_M]), fontsize=16)
 
     ax2.loglog(delta_ts[1:], np.mean(mean_error, axis=0)[1:], label='Sample Error')
 
@@ -229,28 +227,49 @@ if __name__ == '__main__':
         plt.xlim(0.0, depth)
         plt.ylim(0.0, 4.5)
 
-    figWeak = plt.figure()
-    ax4 = figWeak.add_subplot(2, 1, 1)
-    ax5 = figWeak.add_subplot(2,1,2)
+    figWeak = plt.figure(figsize=(5.5, 5.3 / 4 * 3), dpi=300)
+    ax5 = figWeak.add_subplot(1,1,1)
+    figWeak.subplots_adjust(hspace=0.5)
 
     error_mean = np.zeros((nr_solvers, len(solved_list[0][0]) // mfd))
+    particle_esc = np.zeros((nr_solvers))
 
     for scale in range(nr_scales):
         solved_scale = solved_list[scale].copy()
         scale_mean = np.mean(solved_scale, axis=0)
         x_axis = wiener_list[scale][0].axis_x
         scale_time = wiener_list[scale][0].min_scale
+        particle_ends = np.array([solved_list[scale][i][-1] for i in range(nr_samples)])
+        particle_ends_1 = 0.0 < particle_ends
+        particle_ends_2 = particle_ends < depth*0.5
+        particle_esc[scale] = nr_samples - np.sum(particle_ends_1 * particle_ends_2)
         if scale == 0:
             ori_mean = scale_mean.copy()
         if scale > 0:
             for k in range(0, len(solved_list[0][0]) - mfd, mfd):
                 error_mean[scale - (nr_scales - nr_solvers), k // mfd] = np.abs(
                     ori_mean[k] - scale_mean[k // 2 ** scale])
-        ax4.plot(wiener_list[nr_scales-1][0].axis_x, error_mean[scale], label='dt = {}'.format(scale_time))
-        dt_variances = np.var(error_mean[1:], axis=1)
-    ax5.loglog(delta_ts[1:], dt_variances)
-    ax4.set_yscale('log')
+    dt_variances = [error_mean[i][-1] for i in range(1, nr_scales)]
+    particle_esc = particle_esc/nr_samples * 100
+    ax5.loglog(delta_ts[1:], dt_variances, label='Sample Error')
+    ax5.loglog(x_test, y_test, label='Error fit O(dt^1/2)')
+    ax5.loglog(x_test, x_test, label='Error for O(dt^1)')
     ax5.grid()
-    ax4.legend(loc=3)
+    ax5.legend(loc=4)
+    figWeak.suptitle('Weak Convergence {} scheme'.format(('Milstein', 'Euler')[E_or_M]), fontsize=15)
+
+    ax5.set_title('Absolute error at t={} over dt'.format(time_end))
+    ax5.set_xlabel('timestep (dt)')
+    ax5.set_ylabel('Error'.format(time_end))
+
+    figEscape = plt.figure(figsize=(5.5, 5.3 / 4 * 3), dpi=300)
+    ax6 = figEscape.add_subplot(1,1,1)
+    ax6.plot(delta_ts, particle_esc)
+    ax6.grid()
+    ax6.set_title('Escaped Particles in the {} scheme'.format(('Milstein', 'Euler')[E_or_M]), fontsize=15)
+    ax6.set_xlabel('time-step (dt)')
+    ax6.set_ylabel('frequency (%)')
+    ax6.set_xscale('log')
+
 
     plt.show()
