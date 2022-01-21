@@ -60,11 +60,8 @@ class Wiener():
         self.solved[0] = ini_pos
         for i in range(self.max_samples - 1):
             x = self.solved[i]
-            self.solved[i + 1] = x + f_func(x, self.axis_x[i], h=self.h, K=self.K) * self.min_scale + g_func(x,
-                                                                                                             self.axis_x[
-                                                                                                                 i],
-                                                                                                             h=self.h,
-                                                                                                             K=self.K) * (
+            self.solved[i + 1] = x + f_func(x, self.axis_x[i], h=self.h, K=self.K) * self.min_scale +\
+                                 g_func(x, self.axis_x[i], h=self.h, K=self.K) * (
                                          self.sample[i + 1] - self.sample[i])
         return self.solved.copy()
 
@@ -72,18 +69,11 @@ class Wiener():
         self.solved[0] = ini_pos
         for i in range(self.max_samples - 1):
             x = self.solved[i]
-            self.solved[i + 1] = x + f_func(x, self.axis_x[i], h=self.h, K=self.K) * self.min_scale + g_func(x,
-                                                                                                             self.axis_x[
-                                                                                                                 i],
-                                                                                                             h=self.h,
-                                                                                                             K=self.K) * (
-                                         self.sample[i + 1] - self.sample[i]) + 0.5 * g_func(x, self.axis_x[i],
-                                                                                             h=self.h,
-                                                                                             K=self.K) * g_func_der(x,
-                                                                                                                    self.axis_x[
-                                                                                                                        i],
-                                                                                                                    h=self.h,
-                                                                                                                    K=self.K) * (
+            self.solved[i + 1] = x + f_func(x, self.axis_x[i], h=self.h, K=self.K) * self.min_scale + \
+                                 g_func(x,self.axis_x[i],h=self.h, K=self.K) * (
+                                         self.sample[i + 1] - self.sample[i]) + \
+                                 0.5 * g_func(x, self.axis_x[i],h=self.h,  K=self.K) * \
+                                 g_func_der(x,self.axis_x[i],h=self.h, K=self.K) * (
                                          np.power(self.sample[i + 1] - self.sample[i], 2.0) - self.min_scale)
         return self.solved.copy()
 
